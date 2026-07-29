@@ -1,4 +1,5 @@
 ﻿using DotRecast.Detour;
+using DotRecast.Core.Numerics;
 using DotRecast.Recast;
 using FFXIVClientStructs.FFXIV.Common.Component.BGCollision.Math;
 using System;
@@ -29,10 +30,24 @@ public class NavmeshCustomization
 
     public virtual void CustomizeMesh(DtNavMesh mesh, List<uint> festivalLayers) { }
 
-    protected static void LinkPoints(DtNavMesh mesh, Vector3 startPos, Vector3 endPos)
+    protected static void LinkPoints(DtNavMesh mesh, Vector3 startPos, Vector3 endPos, float halfExtentY = 5)
     {
-        var refstart = InsertPointPoly(mesh, startPos, true);
-        var refend = InsertPointPoly(mesh, endPos, false);
+        if (!TryFindNearestPoly(mesh, startPos, halfExtentY, out var startPolyRef, out var startPolyPoint))
+        {
+            Service.Log.Warning($"Skipping custom navmesh link {startPos} -> {endPos}: no polygon found near start point {startPos}.");
+            return;
+        }
+
+        if (!TryFindNearestPoly(mesh, endPos, halfExtentY, out var endPolyRef, out var endPolyPoint))
+        {
+            Service.Log.Warning($"Skipping custom navmesh link {startPos} -> {endPos}: no polygon found near end point {endPos}.");
+            return;
+        }
+
+        // Validate both endpoints before mutating the mesh. This prevents a missing
+        // second endpoint from leaving behind an orphaned point polygon.
+        var refstart = InsertPointPoly(mesh, startPolyRef, startPolyPoint);
+        var refend = InsertPointPoly(mesh, endPolyRef, endPolyPoint);
 
         mesh.GetTileAndPolyByRefUnsafe(refstart, out var startTile, out var startPoly);
 
@@ -47,15 +62,16 @@ public class NavmeshCustomization
         startTile.polyLinks[startPoly.index] = idx;
     }
 
-    private static long InsertPointPoly(DtNavMesh mesh, Vector3 pos, bool start)
+    private static bool TryFindNearestPoly(DtNavMesh mesh, Vector3 pos, float halfExtentY, out long polyRef, out RcVec3f polyPoint)
     {
         var query = new DtNavMeshQuery(mesh);
+        var status = query.FindNearestPoly(pos.SystemToRecast(), new(5, halfExtentY, 5), new DtQueryDefaultFilter(), out polyRef, out polyPoint, out _);
+        return status.Succeeded() && polyRef != 0;
+    }
 
-        var status = query.FindNearestPoly(pos.SystemToRecast(), new(5, 5, 5), new DtQueryDefaultFilter(), out var startRef, out var startPolyPoint, out _);
-        if (status.Failed() || startRef == 0)
-            throw new ArgumentException($"Unable to find a polygon corresponding with input point {pos}");
-
-        mesh.GetTileAndPolyByRefUnsafe(startRef, out var startTile, out var startPoly);
+    private static long InsertPointPoly(DtNavMesh mesh, long polyRef, RcVec3f polyPoint)
+    {
+        mesh.GetTileAndPolyByRefUnsafe(polyRef, out var startTile, out var startPoly);
         var p = new DtPoly(startTile.data.header.polyCount, 1)
         {
             vertCount = 1,
@@ -72,20 +88,20 @@ public class NavmeshCustomization
 
         // add new poly to mesh
         startTile.data.polys[^1] = p;
-        startTile.data.verts[^3] = startPolyPoint.X;
-        startTile.data.verts[^2] = startPolyPoint.Y;
-        startTile.data.verts[^1] = startPolyPoint.Z;
+        startTile.data.verts[^3] = polyPoint.X;
+        startTile.data.verts[^2] = polyPoint.Y;
+        startTile.data.verts[^1] = polyPoint.Z;
 
         Array.Resize(ref startTile.polyLinks, startTile.polyLinks.Length + 1);
         startTile.polyLinks[^1] = DtNavMesh.DT_NULL_LINK;
 
-        var salt = DtNavMesh.DecodePolyIdSalt(startRef);
+        var salt = DtNavMesh.DecodePolyIdSalt(polyRef);
         var pointRef = DtNavMesh.EncodePolyId(salt, startTile.index, p.index);
 
         // link point to the polygon it lies inside
         var idx = mesh.AllocLink(startTile);
         var link = startTile.links[idx];
-        link.refs = startRef;
+        link.refs = polyRef;
         link.edge = 0;
         link.side = 0xff;
         link.bmin = link.bmax = 0;
