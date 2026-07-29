@@ -3,8 +3,8 @@
   <PropertyGroup>
     <Authors></Authors>
     <Company></Company>
-    <Version>1.1.2.1</Version>
-    <Description>Move around!</Description>
+    <Version>1.1.2.2</Version>
+    <Description>自動尋路與移動工具。</Description>
     <Copyright></Copyright>
     <PackageProjectUrl>https://github.com/awgil/ffxiv_navmesh</PackageProjectUrl>
   </PropertyGroup>

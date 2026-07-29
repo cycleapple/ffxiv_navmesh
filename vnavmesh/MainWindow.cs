@@ -68,19 +68,19 @@ public class MainWindow : Window, IDisposable
         {
             if (tabs)
             {
-                using (var tab = ImRaii.TabItem("Config"))
+                using (var tab = ImRaii.TabItem("設定"))
                     if (tab)
                         Service.Config.Draw();
-                using (var tab = ImRaii.TabItem("Layout"))
+                using (var tab = ImRaii.TabItem("場景配置"))
                     if (tab)
                         _debugLayout.Draw();
-                using (var tab = ImRaii.TabItem("Collision"))
+                using (var tab = ImRaii.TabItem("碰撞"))
                     if (tab)
                         _debugGameColl.Draw();
-                using (var tab = ImRaii.TabItem("Navmesh manager"))
+                using (var tab = ImRaii.TabItem("導航網格管理"))
                     if (tab)
                         _debugNavmeshManager.Draw();
-                using (var tab = ImRaii.TabItem("Navmesh custom"))
+                using (var tab = ImRaii.TabItem("自訂導航網格"))
                     if (tab)
                         _debugNavmeshCustom.Draw();
             }
