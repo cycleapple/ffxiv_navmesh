@@ -269,7 +269,7 @@ public sealed class NavmeshManager : IDisposable
                 using var stream = cache.OpenRead();
                 using var reader = new BinaryReader(stream);
                 var mesh = Navmesh.Deserialize(reader, customization.Version);
-                customization.CustomizeMesh(mesh.Mesh, layers);
+                customization.CustomizeMesh(mesh.Mesh, layers, scene);
                 return mesh;
             }
             catch (Exception ex)
@@ -295,7 +295,7 @@ public sealed class NavmeshManager : IDisposable
             using var writer = new BinaryWriter(stream);
             builder.Navmesh.Serialize(writer);
         }
-        customization.CustomizeMesh(builder.Navmesh.Mesh, layers);
+        customization.CustomizeMesh(builder.Navmesh.Mesh, layers, scene);
         deltaProgress += 0.01f;
         return builder.Navmesh;
     }

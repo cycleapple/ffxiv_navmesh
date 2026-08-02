@@ -22,9 +22,9 @@ internal class Z0132NewGridania : NavmeshCustomization
         config.AddOffMeshConnection(new(45.03f, -0.13f, 83.1f), new(46.78f, -8.5f, 91.75f));
     }
 
-    public override void CustomizeMesh(DtNavMesh mesh, List<uint> festivalLayers)
+    public override void CustomizeMesh(DtNavMesh mesh, List<uint> festivalLayers, SceneDefinition scene)
     {
-        base.CustomizeMesh(mesh, festivalLayers);
+        base.CustomizeMesh(mesh, festivalLayers, scene);
 
         // GC entrance to Barracks
         LinkPoints(mesh, new(-65.98f, -0.5f, 3.3f), new(-75.4f, -0.5f, -3.47f));

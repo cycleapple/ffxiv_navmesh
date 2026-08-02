@@ -10,7 +10,14 @@ namespace Navmesh.Customizations;
 [CustomizationTerritory(1237)]
 internal class Z1237SinusArdorum : NavmeshCustomization
 {
-    public override int Version => 6;
+    private static readonly HashSet<string> CosmolinerCollisionPaths = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "bg/ffxiv/cos_c1/hou/common/collision/c1w0_03_t100a.pcb",
+        "bg/ffxiv/cos_c1/hou/common/collision/c1w0_03_t200a.pcb",
+        "bg/ffxiv/cos_c1/hou/common/collision/c1w0_03_t300a.pcb",
+    };
+
+    public override int Version => 7;
 
     public override void CustomizeScene(SceneExtractor scene)
     {
@@ -56,25 +63,35 @@ internal class Z1237SinusArdorum : NavmeshCustomization
     const float pi = MathF.PI;
     const float hpi = pi / 2;
 
-    public override void CustomizeMesh(DtNavMesh mesh, List<uint> festivalLayers)
+    public override void CustomizeMesh(DtNavMesh mesh, List<uint> festivalLayers, SceneDefinition scene)
     {
-        // These links were authored for the completed Sinus Ardorum layout.
-        // Festival 0x009E phase 9 is the matching scene version; applying them
-        // to an earlier or unknown construction phase can connect unrelated
-        // polygons that happen to occupy the same coordinates.
         var festivalVersion = festivalLayers
             .FirstOrDefault(layer => (layer & 0xFFFF) == 0x009E) >> 16;
-        if (festivalVersion != 0x09)
-        {
-            Service.Log.Warning($"Skipping Sinus Ardorum custom links for unsupported festival phase {festivalVersion:X}.");
-            return;
-        }
+        var phaseName = festivalVersion == 0 ? "unknown" : festivalVersion.ToString("X");
 
-        // TC 7.3's phase-9 cosmoliner walk surface is about 6.7 yalms below
-        // the layout transform used to derive some endpoints. Keep the
-        // horizontal tolerance at 5, but use 8 vertically for this layout.
-        void linkPoints(Vector3 startPos, Vector3 endPos)
-            => LinkPoints(mesh, startPos, endPos, 8);
+        // Reconstruction progress does not map reliably to a single festival phase.
+        // Use collision models from the active layout instead: a route is available
+        // only when both of its Cosmoliner models are actually present.
+        var activeCosmoliners = scene.BgParts
+            .Where(part => !part.analytic && IsActive(part.matId) && IsCosmoliner(scene, part.crc))
+            .Select(part => part.transform.Translation)
+            .Concat(scene.Colliders
+                .Where(collider => IsActive(collider.matId) && IsCosmoliner(scene, collider.crc))
+                .Select(collider => collider.transform.Translation))
+            .ToList();
+
+        bool hasCosmoliner(Vector3 position)
+            => activeCosmoliners.Any(active => Vector3.DistanceSquared(active, position) <= 4f);
+
+        // Direct, non-Cosmoliner transfer points do not have a known model marker yet.
+        // Preserve their previous phase-9 restriction until their unlock phases are verified.
+        void linkPhase9Points(Vector3 startPos, Vector3 endPos)
+        {
+            if (festivalVersion == 0x09)
+                LinkPoints(mesh, startPos, endPos);
+            else
+                Service.Log.Debug($"Sinus Ardorum phase {phaseName}: skipping unverified non-Cosmoliner link {startPos} -> {endPos}.");
+        }
 
         (Vector3 DepartPoint, Vector3 ArrivePoint) getPoints(Vector3 worldPos, Vector3 rotation)
         {
@@ -86,11 +103,18 @@ internal class Z1237SinusArdorum : NavmeshCustomization
 
         void addCosmoliner(Vector3 pointAPos, Vector3 pointARotation, Vector3 pointBPos, Vector3 pointBRotation)
         {
+            if (!hasCosmoliner(pointAPos) || !hasCosmoliner(pointBPos))
+            {
+                Service.Log.Debug($"Sinus Ardorum phase {phaseName}: skipping inactive Cosmoliner pair {pointAPos} <-> {pointBPos}.");
+                return;
+            }
+
             var (depA, arrA) = getPoints(pointAPos, pointARotation);
             var (depB, arrB) = getPoints(pointBPos, pointBRotation);
 
-            linkPoints(depA, arrB);
-            linkPoints(depB, arrA);
+            LinkPoints(mesh, depA, arrB);
+            LinkPoints(mesh, depB, arrA);
+            Service.Log.Debug($"Sinus Ardorum phase {phaseName}: verified Cosmoliner {pointAPos} <-> {pointBPos}; added bidirectional links.");
         }
 
         #region base liners
@@ -136,9 +160,9 @@ internal class Z1237SinusArdorum : NavmeshCustomization
 
         #region NE caves
         // NE -> downstairs
-        linkPoints(new(322.35117f, 43, -306.3f), new(404.5141f, -56.8f, -375.2349f));
+        linkPhase9Points(new(322.35117f, 43, -306.3f), new(404.5141f, -56.8f, -375.2349f));
         // downstairs -> NE
-        linkPoints(new(390.42264f, -57, -394.7571f), new(308.2982f, 43.2f, -325.8215f));
+        linkPhase9Points(new(390.42264f, -57, -394.7571f), new(308.2982f, 43.2f, -325.8215f));
 
         // downstairs <-> NNEE
         addCosmoliner(new(433.426f, -59.5f, -415.135f), new(0, -0.873f, 0), new(624.088f, -74.5f, -556.224f), new(-pi, -0.908f, -pi));
@@ -147,9 +171,9 @@ internal class Z1237SinusArdorum : NavmeshCustomization
         addCosmoliner(new(657.776f, -74.5f, -552.088f), new(-pi, 0.663f, pi), new(868, -58, -374), new(0, 0.873f, 0));
 
         // NNEE -> loop
-        linkPoints(new(625.157f, -71.970f, -583.71f), new(366.911f, -117.3f, -834.9056f));
-        linkPoints(new(388.186f, -117.470f, -848.963f), new(622.1744f, -108.3f, -944.7515f));
-        linkPoints(new(646.472f, -108.480f, -924.356f), new(646.622f, -71.8f, -592.223f));
+        linkPhase9Points(new(625.157f, -71.970f, -583.71f), new(366.911f, -117.3f, -834.9056f));
+        linkPhase9Points(new(388.186f, -117.470f, -848.963f), new(622.1744f, -108.3f, -944.7515f));
+        linkPhase9Points(new(646.472f, -108.480f, -924.356f), new(646.622f, -71.8f, -592.223f));
         #endregion
 
         #region SE
@@ -171,9 +195,9 @@ internal class Z1237SinusArdorum : NavmeshCustomization
 
         #region SW crater
         // SS -> tunnel
-        linkPoints(new(-122.029f, 55, 740.012f), new(-316.2774f, 55.2f, 740));
+        linkPhase9Points(new(-122.029f, 55, 740.012f), new(-316.2774f, 55.2f, 740));
         // tunnel -> SS
-        linkPoints(new(-317.979f, 55, 759.97f), new(-123.75f, 55.2f, 760));
+        linkPhase9Points(new(-317.979f, 55, 759.97f), new(-123.75f, 55.2f, 760));
 
         // crater SE <-> N
         addCosmoliner(new(-340, 50.5f, 726), default, new(-596, 50, 390), new(0, -hpi, 0));
@@ -196,4 +220,10 @@ internal class Z1237SinusArdorum : NavmeshCustomization
         addCosmoliner(new(-699, 60, -14), default, new(-556.971f, 59, -523.029f), new(pi, -0.785f, pi));
         #endregion
     }
+
+    private static bool IsActive(ulong materialId)
+        => (materialId & 0x410) != 0x400;
+
+    private static bool IsCosmoliner(SceneDefinition scene, uint pathCrc)
+        => scene.MeshPaths.TryGetValue(pathCrc, out var path) && CosmolinerCollisionPaths.Contains(path);
 }
