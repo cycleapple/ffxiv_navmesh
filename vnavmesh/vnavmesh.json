@@ -6,5 +6,5 @@
   "InternalName": "vnavmesh",
   "ApplicableVersion": "any",
   "IconUrl": "https://raw.githubusercontent.com/awgil/ffxiv_navmesh/8dab2e675e51a03b1827d94e77616a8144892a72/icon2.png",
-  "ChangeLog": "月面重建階段不再以 festival phase 阻擋全部客製路徑；改由有效 layout 中的 Cosmoliner 模型逐對啟用傳送連線，並恢復預設的垂直 polygon 搜尋範圍。"
+  "ChangeLog": "補上月面 SS 與隧道間的雙向 Cosmoliner 連線；只有三個外圈站點模型皆存在時才啟用，避免重建進度不足時走入不存在的通道。"
 }
