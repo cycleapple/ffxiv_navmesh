@@ -15,9 +15,11 @@ internal class Z1237SinusArdorum : NavmeshCustomization
         "bg/ffxiv/cos_c1/hou/common/collision/c1w0_03_t100a.pcb",
         "bg/ffxiv/cos_c1/hou/common/collision/c1w0_03_t200a.pcb",
         "bg/ffxiv/cos_c1/hou/common/collision/c1w0_03_t300a.pcb",
+        "bg/ffxiv/cos_c1/hou/c1w1/collision/c1w0_08_t300a.pcb",
+        "bg/ffxiv/cos_c1/hou/c1w1/collision/c1w0_08_t300h.pcb",
     };
 
-    public override int Version => 7;
+    public override int Version => 8;
 
     public override void CustomizeScene(SceneExtractor scene)
     {
@@ -194,10 +196,17 @@ internal class Z1237SinusArdorum : NavmeshCustomization
         #endregion
 
         #region SW crater
-        // SS -> tunnel
-        linkPhase9Points(new(-122.029f, 55, 740.012f), new(-316.2774f, 55.2f, 740));
-        // tunnel -> SS
-        linkPhase9Points(new(-317.979f, 55, 759.97f), new(-123.75f, 55.2f, 760));
+        var outerCosmolinerActive = hasCosmoliner(new(-130, 50, 750))
+            && hasCosmoliner(new(-220, 50, 750))
+            && hasCosmoliner(new(-310, 50, 750));
+
+        if (outerCosmolinerActive)
+        {
+            // SS -> tunnel
+            LinkPoints(mesh, new(-122.029f, 55, 740.012f), new(-316.2774f, 55.2f, 740));
+            // tunnel -> SS
+            LinkPoints(mesh, new(-317.979f, 55, 759.97f), new(-123.75f, 55.2f, 760));
+        }
 
         // crater SE <-> N
         addCosmoliner(new(-340, 50.5f, 726), default, new(-596, 50, 390), new(0, -hpi, 0));
