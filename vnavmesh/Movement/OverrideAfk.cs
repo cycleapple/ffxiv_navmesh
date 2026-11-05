@@ -1,4 +1,4 @@
-﻿using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace Navmesh.Movement;
 
@@ -10,6 +10,6 @@ internal unsafe static class OverrideAFK
         module->AfkTimer = 0;
         module->ContentInputTimer = 0;
         module->InputTimer = 0;
-        module->Unk1C = 0;
+        // API14 makes the undocumented timer private; match upstream ResetTimers.
     }
 }
